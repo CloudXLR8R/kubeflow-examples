@@ -1,0 +1,13 @@
+args:
+  aws_secret_name: aws-s3-data-secret-kfaas-demo
+  # k8_secret_aws_user: kubeflow-s3-rw-sandbox
+  model_framework: "tensorflow"
+  model_name: mnist-fashion
+  model_version: 1
+  export_model_bucket: kfaas-demo-data-sandbox
+  export_model_bucket_dir: demo/models
+  # data_urls:
+  #   - "https://fashion-mnist.s3-website.eu-central-1.amazonaws.com/train-images-idx3-ubyte.gz"
+  #   - "https://fashion-mnist.s3-website.eu-central-1.amazonaws.com/train-labels-idx1-ubyte.gz"
+  #   - "https://fashion-mnist.s3-website.eu-central-1.amazonaws.com/t10k-images-idx3-ubyte.gz"
+  #   - "https://fashion-mnist.s3-website.eu-central-1.amazonaws.com/t10k-labels-idx1-ubyte.gz"

@@ -1,0 +1,7 @@
+*.zip
+*.yaml
+!params/*.yaml
+!components/*.yaml
+compiled
+compiled.bak
+!.vscode

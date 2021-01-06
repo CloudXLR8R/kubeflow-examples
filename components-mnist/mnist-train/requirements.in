@@ -1,0 +1,5 @@
+tensorflow
+numpy
+# matplotlib==3.3.3
+# scikit-learn==0.23.2
+boto3

@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+
+set -e
+
+usage() {
+	cat <<-HERE
+		Usage: components
+		eg: $ components components/download-datasets
+		eg: $ components -p components
+		eg: $ components -t components
+
+		Env vars required for build & push: IMAGE_REGISTRY, IMAGE_REPO, IMAGE_TAG
+
+		ARGS:
+			-1  directory containing kubeflow components
+
+		OPTS: (at least one is required)
+			-p push image
+			-t test components
+
+		Tests/builds/pushes components to AWS ECR.
+	HERE
+	exit 0
+}
+
+while getopts "hpt" opt; do
+	case $opt in
+	h) usage ;;
+	p) FLAG_PUSH=y ;;
+	t) FLAG_TEST=y ;;
+	?) usage ;;
+	esac
+done
+shift $((OPTIND - 1))
+
+validate() {
+	if [[ -z $IMAGE_REGISTRY ]]; then
+		echo "[FAIL] \$IMAGE_REGISTRY variable not set"
+		usage
+		exit 1
+	fi
+	if [[ -z $IMAGE_REPO ]]; then
+		echo "[FAIL] \$IMAGE_REPO variable not set"
+		usage
+		exit 1
+	fi
+	if [[ -z $IMAGE_TAG ]]; then
+		echo "[FAIL] \$IMAGE_TAG variable not set"
+		usage
+		exit 1
+	fi
+}
+
+# $1 = component name
+buildPublishImage() {
+	local repo
+	repo="$IMAGE_REPO/components/$1"
+	echo "Building image for component $1"
+	docker build -t "$IMAGE_REGISTRY/$repo:$IMAGE_TAG" .
+
+	if [[ $FLAG_PUSH == 'y' ]]; then
+		aws ecr describe-repositories --repository-names "$repo" >/dev/null 2>&1 || aws ecr create-repository --repository-name "$repo"
+		docker push "$IMAGE_REGISTRY/$repo:$IMAGE_TAG"
+	fi
+}
+
+runTests() {
+	echo "testing component $(basename "$PWD")"
+	make env
+	source env/bin/activate
+	python -m pip install pip-tools
+	make install
+	make test
+	deactivate
+}
+
+run() {
+
+	if [[ -z $1 ]]; then
+		echo "[FAIL] \$1 - directory variable not set"
+		usage
+		exit 1
+	fi
+
+	dir=$(pwd)
+	# allow single component operation
+	if [[ -f $1/Dockerfile ]]; then
+		echo "building single component: $1"
+		cd "$1" || exit
+		buildPublishImage "$(basename "$1")"
+		cd "$dir" || exit
+	fi
+	# also support looping through directory containing multiple components
+	for d in "$1"/*; do
+		if [[ ! -d $1 ]]; then
+			continue
+		fi
+		if [[ $FLAG_TEST == 'y' ]]; then
+			if [[ -f $d/Makefile ]]; then
+				cd "$d" || exit
+				runTests
+				cd "$dir" || exit
+			fi
+			continue
+		fi
+		if [[ -f $d/Dockerfile ]]; then
+			cd "$d" || exit
+			buildPublishImage "$(basename "$d")"
+			cd "$dir" || exit
+		fi
+	done
+}
+
+if [[ $FLAG_TEST != 'y' ]]; then
+	validate
+fi
+
+# echo "FLAG_TEST = $FLAG_TEST"
+run "$@"

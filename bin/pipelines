@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -e
+PARAMS_DIR=params
+
+usage() {
+  cat <<-HERE
+		Usage: pipelines <PIPELINES_DIR>
+		eg: $ pipelines pipelines
+
+		Env vars required: IMAGE_REGISTRY, IMAGE_REPO, IMAGE_TAG
+
+		ARGS:
+		-1  directory that contains kubeflow pipelines
+
+    FLAGS
+    -u  upload the pipeline (without running it)
+    -r  upload and run the pipeline
+    -p  pipeline parameter files directory (defaults to params ie "params/$(basename "$f").yaml, eg "params/sequential.yaml")
+
+    Loops through the .py files contained in \$1 and builds/uploads/runs kubeflow pipelines. Default is just to build.
+	HERE
+  exit 0
+}
+
+while getopts "p:ruh" opt; do
+  case $opt in
+  h) usage ;;
+  p) PARAMS_DIR="$OPTARG" ;;
+  u) FLAG_UPLOAD=y ;;
+  r)
+    FLAG_UPLOAD=y
+    FLAG_RUN=y
+    ;;
+  ?) usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+# $1 = GIT_SHA
+# $2 = experiment name (needs to be the same for runs to be grouped together)
+# Run name is generated automatically in kfputils:
+# run_id = "run-" + datetime.now().strftime("%Y%m%d-%H%M%S")
+# could use github SHA for run name instead as is not required to be unique
+# https://www.kubeflow.org/docs/pipelines/reference/api/kubeflow-pipeline-api-spec/#/definitions/apiRun
+# slide 34: https://www.slideshare.net/AnimeshSingh/hybrid-cloud-kubeflow-and-tensorflow-extended-tfx
+buildPipelines() {
+  if [[ -f $3 ]]; then
+    python3 "$3"
+  else
+    for p in *.py; do
+      # dsl-compile --py "$p" --output "${p%%.*}.zip"
+      python3 "$p"
+    done
+  fi
+  for z in *.zip; do
+    local unzip_dir="compiled/${z%%.*}"
+    mkdir -p "$unzip_dir"
+    unzip -o -d "$unzip_dir" "$z"
+  done
+
+  for f in compiled/*; do
+    if [[ $FLAG_UPLOAD == "y" ]]; then
+      kfputils pipeline upload \
+        --package-file "$f/pipeline.yaml" \
+        --pipeline-version "$1"
+    fi
+    if [[ $FLAG_RUN == "y" ]]; then
+      kfputils pipeline upload-run \
+        --package-file "$f/pipeline.yaml" \
+        --experiment-name "$2" \
+        --params-file "${PARAMS_DIR}/$(basename "$f").yaml" \
+        --pipeline-version "$1"
+    fi
+  done
+}
+
+run() {
+  local dir_start
+  local dir_pipelines
+  local pipeline
+  local experiment_name="CI"
+  dir_start=$(pwd)
+
+  if [[ -d $1 ]]; then
+    dir_pipelines=$1
+  elif [[ -f $1 ]]; then
+    dir_pipelines=$(dirname "$1")
+    pipeline=$(basename "$1")
+  else
+
+    echo "\$1 = $1"
+    # shellcheck disable=SC2016
+    echo '$1 must = file of pipeline or dir containing pipeline defintion files (.py files)'
+    exit 1
+  fi
+
+  cd "$dir_pipelines" || exit
+  make clean
+
+  buildPipelines "$IMAGE_TAG" "$experiment_name" "$pipeline"
+
+  cd "$dir_start" || exit
+}
+
+run "$@"

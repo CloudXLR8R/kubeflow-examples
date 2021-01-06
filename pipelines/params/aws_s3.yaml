@@ -1,0 +1,5 @@
+args:
+  aws_secret_name: aws-s3-data-secret-kfaas-demo
+  model_name: mnist-fashion
+  bucket: kfaas-demo-data-sandbox
+  bucket_dir: demo
