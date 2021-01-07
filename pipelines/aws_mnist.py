@@ -52,7 +52,7 @@ def exportOp():
 
 @dsl.pipeline(
     name="mnist_pipeline",
-    description="Train mnist fashion classification model and export to s3",
+    description="Train an mnist fashion classification model and export to AWS S3",
 )
 def pipeline(  # nosec
     aws_secret_name: str = "aws-s3-data-secret-kfaas-demo",

@@ -10,7 +10,7 @@ def checkS3AccessOp():
 
 @dsl.pipeline(
     name="mnist_pipeline",
-    description="Train and deploy mnist fashion classification",
+    description="List the contents of an AWS S3 bucket",
 )
 def pipeline(  # nosec
     aws_secret_name: str = "aws-s3-data-secret-kfaas-demo",

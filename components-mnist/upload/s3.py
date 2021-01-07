@@ -61,11 +61,7 @@ def upload_dir(
                 f"{bucket_dir}/{os.path.relpath(local_path, src_dir)}",
             )
 
-    response = s3_client.list_objects(Bucket=bucket_name)
-    print(f"All objects in {bucket_name}:")
-
+    print(f"Objects uploaded: {bucket_name}:")
+    response = s3_client.list_objects(Bucket=bucket_name, Prefix=bucket_dir)
     for file in response["Contents"]:
         print(f"{bucket_name}/{file['Key']}")
-
-
-# upload_dir(src_dir, bucket_name, bucket_dir)
