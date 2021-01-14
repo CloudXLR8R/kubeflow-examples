@@ -62,9 +62,9 @@ def pipeline(  # nosec
     bucket: str = "kfaas-demo-data-sandbox",
     bucket_dir_model: str = "demo/models",
     bucket_dir_tensorboard: str = "demo/tensorboard",
-    gpus: int = 1,
 ):
 
+    gpus = 1
     mnt_path = "/mnt"
     datasets_dir = "/mnt/datasets"
     model_dir = "/mnt/model"
