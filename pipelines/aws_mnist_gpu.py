@@ -62,6 +62,7 @@ def pipeline(  # nosec
     bucket: str = "kfaas-demo-data-sandbox",
     bucket_dir_model: str = "demo/models",
     bucket_dir_tensorboard: str = "demo/tensorboard",
+    gpus: int = 1,
 ):
 
     mnt_path = "/mnt"
@@ -98,6 +99,7 @@ def pipeline(  # nosec
             bucket=bucket,
             bucketdir=f"{bucket_dir_tensorboard}/{model_name}/{model_version}/{dsl.RUN_ID_PLACEHOLDER}",
         )
+        .set_gpu_limit(gpus)
         .add_pvolumes({mnt_path: download_task.pvolume})
         .apply(aws_secret)
     )
