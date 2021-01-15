@@ -64,6 +64,7 @@ def pipeline(  # nosec
     bucket_dir_tensorboard: str = "demo/tensorboard",
 ):
 
+    gpus = 1
     mnt_path = "/mnt"
     datasets_dir = "/mnt/datasets"
     model_dir = "/mnt/model"
@@ -98,6 +99,7 @@ def pipeline(  # nosec
             bucket=bucket,
             bucketdir=f"{bucket_dir_tensorboard}/{model_name}/{model_version}/{dsl.RUN_ID_PLACEHOLDER}",
         )
+        .set_gpu_limit(gpus)
         .add_pvolumes({mnt_path: download_task.pvolume})
         .apply(aws_secret)
     )
