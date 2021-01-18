@@ -1,0 +1,41 @@
+name: Mnist model evaluater
+description: Evaluate the mnist model on the test dataset and export loss and accuracy metrics
+inputs:
+  - {
+      name: DataDir,
+      type: String,
+      description: "Directory that contains datasets.",
+    }
+  - {
+      name: ModelDir,
+      type: Directory,
+      description: "Directory containing the trained model.",
+    }
+  - {
+      name: MetricsPath,
+      type: File,
+      # default: /mlpipeline-ui-metadata.json,
+      default: /mlpipeline-metrics.json,
+      description: "Location to save the metrics file.",
+    }
+# https://github.com/kubeflow/pipelines/blob/1449cfe0a5efeaeba9f5b6d26ce1d58024657814/components/local/roc/component.yaml
+outputs:
+  # https://www.kubeflow.org/docs/pipelines/sdk/output-viewer/
+  # - { name: MLPipeline UI metadata, type: UI metadata }
+  # https://www.kubeflow.org/docs/pipelines/sdk/pipelines-metrics/
+  - { name: MLPipeline Metrics, type: Metrics }
+implementation:
+  container:
+    image: {{ image }}
+    args:
+      [
+        --datadir,
+        { inputValue: DataDir },
+        --modeldir,
+        { inputValue: ModelDir },
+        --metricspath,
+        { inputValue: MetricsPath },
+      ]
+    fileOutputs:
+      # MLPipeline UI metadata: /mlpipeline-ui-metadata.json
+      MLPipeline Metrics: /mlpipeline-metrics.json

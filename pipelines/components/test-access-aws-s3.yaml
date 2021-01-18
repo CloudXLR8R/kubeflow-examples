@@ -1,0 +1,12 @@
+name: Check AWS S3 access
+description: Run a test to verify you have access to the AWS S3 location
+inputs:
+  - {
+      name: S3 Path,
+      type: String,
+      description: "S3 bucket path to check for access.",
+    }
+implementation:
+  container:
+    image: cloudxlr8r/kf-toolkit:latest
+    command: ["aws", "s3", "ls", { inputValue: S3 Path }]

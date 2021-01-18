@@ -1,0 +1,193 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@1.1.0
+  python: circleci/python@1.2.1
+  shellcheck: circleci/shellcheck@2.2.2
+
+commands:
+  setup_precommit_hooks:
+    description: Restore pre-commit hooks from cache
+    steps:
+      - restore_cache:
+          keys:
+            - v3-pre-commit-hooks-{{ checksum ".pre-commit-config-ci.yaml" }}
+      - run:
+          name: Install pre-commit hooks
+          command: pre-commit install
+  save_precommit_hooks:
+    description: Save the installed pre-commit hooks to the cache
+    steps:
+      - save_cache:
+          key: v3-pre-commit-hooks-{{ checksum ".pre-commit-config-ci.yaml" }}
+          paths:
+            - "~/.cache/pre-commit"
+  set_container_reg_env_vars:
+    description: Set Container Registry Environment Variables
+    steps:
+      - run:
+          command: |
+            echo 'export IMAGE_REPO=$CIRCLE_PROJECT_REPONAME' >> $BASH_ENV
+            echo 'export IMAGE_TAG=$CIRCLE_SHA1' >> $BASH_ENV
+            source $BASH_ENV
+
+jobs:
+  lint:
+    executor: python/default
+    steps:
+      - checkout
+      - python/install-packages:
+          pkg-manager: pip
+      - save_precommit_hooks
+      - setup_precommit_hooks
+      - shellcheck/install
+      - run: pre-commit run --all-files --verbose --config .pre-commit-config-ci.yaml
+
+  test-components:
+    executor:
+      name: python/default
+      tag: "3.8"
+    parameters:
+      components_dir:
+        type: string
+        description: Directory containing kubeflow components
+    steps:
+      - checkout
+      - run: ./bin/components -t << parameters.components_dir >>
+
+  test-pipelines:
+    executor: python/default
+    steps:
+      - checkout
+      - python/install-packages:
+          pip-dependency-file: pipelines/dev-requirements.txt
+          pkg-manager: pip
+      - run: |
+          cd pipelines
+          make test
+
+  package:
+    executor:
+      name: aws-cli/default
+    parameters:
+      region:
+        type: string
+        description: AWS region eg eu-west-2
+      components_dir:
+        type: string
+        description: Directory containing kubeflow components
+      pipelines_dir:
+        type: string
+        description: Directory containing kubeflow pipelines
+    environment:
+      AWS_DEFAULT_REGION: << parameters.region >>
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - set_container_reg_env_vars
+      - run:
+          name: Build Kubeflow Component images
+          command: IMAGE_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com" ./bin/components -b << parameters.components_dir >>
+      - run:
+          name: Lists built docker images
+          command: docker images
+      - aws-cli/setup
+      - run:
+          name: AWS ECR login
+          command: |
+            aws ecr get-login-password | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+      - run:
+          name: Publish Kubeflow component images to AWS ECR
+          command: IMAGE_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com" ./bin/components -p << parameters.components_dir >>
+      - run:
+          name: Install dependencies for pipeline build (usually just a pinned version of kfp)
+          command: pip install -r << parameters.pipelines_dir >>/requirements.txt
+      - run:
+          name: Build Kubeflow pipeline packages
+          command: IMAGE_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com" ./bin/pipelines << parameters.pipelines_dir >>
+      - run: |
+          ls -l << parameters.pipelines_dir >>
+          ls -l << parameters.pipelines_dir >>/compiled
+      - store_artifacts:
+          path: << parameters.pipelines_dir >>/compiled
+          destination: pipelines
+
+  deploy:
+    docker:
+      - image: cloudxlr8r/kf-toolkit:v1.2.4
+    parameters:
+      environment:
+        type: enum
+        enum: ["sandbox", "prod"]
+        description: deployment environment; not actually needed currently
+      region:
+        type: string
+        description: AWS region eg eu-west-2
+      cluster:
+        type: string
+        description: cluster name to deploy pipeline into
+      pipelines_dir:
+        type: string
+        description: Directory containing kubeflow pipelines
+    environment:
+      AWS_DEFAULT_REGION: << parameters.region >>
+    steps:
+      - checkout
+      - run:
+          name: Connect to Kubeflow Cluster
+          command: |
+            mkdir -p ~/.kube
+            eksctl utils write-kubeconfig \
+              --cluster << parameters.cluster >> --region << parameters.region >>
+            kubectl version
+      - set_container_reg_env_vars
+      - run:
+          name: Compile and upload piplines to kubeflow
+          command: IMAGE_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com" ./bin/pipelines -u << parameters.pipelines_dir >>
+      - run:
+          name: List piplines
+          command: kfp pipeline list --max-size 25
+      - run:
+          name: Delete all piplines
+          command: kfputils pipeline delete-all
+      - store_artifacts:
+          path: << parameters.pipelines_dir >>/compiled
+          destination: pipelines
+
+workflows:
+  build-and-deploy:
+    jobs:
+      - lint
+      - test-pipelines
+      - test-components:
+          components_dir: components-mnist
+      - package:
+          context: com.demo.sandbox.ecr
+          name: package-dev
+          requires:
+            - lint
+            - test-pipelines
+            - test-components
+          region: eu-west-2
+          components_dir: components-mnist
+          pipelines_dir: pipelines
+      - approve-deploy:
+          type: approval
+          filters:
+            branches:
+              only:
+                - master
+      - deploy:
+          context: com.demo.sandbox.infra
+          name: deploy-prod
+          environment: prod
+          region: eu-west-2
+          cluster: demo
+          pipelines_dir: pipelines
+          requires:
+            - approve-deploy
+          filters:
+            branches:
+              only:
+                - master

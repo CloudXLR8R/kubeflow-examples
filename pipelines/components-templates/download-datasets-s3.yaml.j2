@@ -1,0 +1,24 @@
+name: Download datasets from S3
+description: Download data for training from AWS S3
+inputs:
+  - {
+      name: URLs,
+      type: String,
+      description: "S3 URLs to download. Comma separated list.",
+    }
+  - {
+      name: OutDir,
+      type: String,
+      default: {{ output_dir }},
+      description: "Output directory to save downloaded S3 object(s).",
+    }
+implementation:
+  container:
+    image: {{ image }}
+    args:
+      [
+        --urls,
+        { inputValue: URLs },
+        --outdir,
+        { inputValue: OutDir },
+      ]

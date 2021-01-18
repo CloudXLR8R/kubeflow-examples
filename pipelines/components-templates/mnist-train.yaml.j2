@@ -1,0 +1,72 @@
+name: Mnist Model trainer
+description: Train tensorflow model for mnist fashion prediction
+inputs:
+  - {
+      name: DataDir,
+      type: String,
+      description: "Directory that contains datasets.",
+    }
+  - {
+      name: OutDir,
+      default: {{ model_dir }},
+      type: Directory,
+      description: "Output directory to save trained model.",
+    }
+  - {
+      name: LogDir,
+      type: Directory,
+      default: {{ log_dir }},
+      description: "Output directory to save Tensorboard logs.",
+    }
+  - {
+      name: MetadataFile,
+      type: String,
+      default: /mlpipeline-ui-metadata.json,
+      description: "Path to write the metadata file.",
+    }
+  - {
+      name: Epochs,
+      type: Integer,
+      description: "Number of epochs to do training for.",
+    }
+  - {
+      name: Bucket,
+      type: String,
+      description: "S3 bucket.",
+    }
+  - {
+      name: BucketDir,
+      type: String,
+      description: "S3 path within bucket to upload tensorboard logs to.",
+    }
+outputs:
+  - {
+      name: LogDir,
+      type: Directory,
+      description: "Output directory to save Tensorboard logs.",
+    }
+  - {name: MLPipeline UI metadata, type: UI metadata}
+implementation:
+  container:
+    image: {{ image }}
+    args:
+      [
+        --datadir,
+        { inputValue: DataDir },
+        --outdir,
+        { inputValue: OutDir },
+        --logdir,
+        { inputValue: LogDir },
+        --metadatafile,
+        { inputValue: MetadataFile },
+        --epochs,
+        { inputValue: Epochs },
+        --bucket,
+        { inputValue: Bucket },
+        --bucketdir,
+        { inputValue: BucketDir },
+      ]
+    fileOutputs:
+      LogDir: {{ log_dir }}
+      MLPipeline UI metadata: /mlpipeline-ui-metadata.json
+      {# MLPipeline Metrics:     /mlpipeline-metrics.json #}

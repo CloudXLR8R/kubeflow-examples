@@ -1,0 +1,9 @@
+args:
+  aws_secret_name: aws-s3-data-secret-kfaas-demo
+  model_name: mnist-fashion
+  model_version: 1
+  epochs: 10
+  bucket: "kfaas-demo-data-sandbox"
+  bucket_dir_model: "demo/models"
+  bucket_dir_tensorboard: "demo/tensorboard"
+  gpus: 0

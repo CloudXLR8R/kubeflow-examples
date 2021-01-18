@@ -1,0 +1,30 @@
+name: Upload to S3
+description: Upload a directory to S3
+inputs:
+  - {
+      name: SrcDir,
+      type: Directory,
+      description: "Local directory to upload to S3.",
+    }
+  - {
+      name: Bucket,
+      type: String,
+      description: "S3 bucket.",
+    }
+  - {
+      name: BucketDir,
+      type: String,
+      description: "S3 path within bucket to upload dir to.",
+    }
+implementation:
+  container:
+    image: {{ image }}
+    args:
+      [
+        --srcdir,
+        { inputValue: SrcDir },
+        --bucket,
+        { inputValue: Bucket },
+        --bucketdir,
+        { inputValue: BucketDir },
+      ]
