@@ -67,6 +67,7 @@ buildPublishImage() {
 runTests() {
 	echo "testing component $(basename "$PWD")"
 	make env
+	# shellcheck disable=SC1091
 	source env/bin/activate
 	python -m pip install pip-tools
 	make install

@@ -11,7 +11,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - v3-pre-commit-hooks-{{ checksum ".pre-commit-config-ci.yaml" }}
+            - v3-pre-commit-hooks-{{ checksum ".pre-commit-config.yaml" }}
       - run:
           name: Install pre-commit hooks
           command: pre-commit install
@@ -19,7 +19,7 @@ commands:
     description: Save the installed pre-commit hooks to the cache
     steps:
       - save_cache:
-          key: v3-pre-commit-hooks-{{ checksum ".pre-commit-config-ci.yaml" }}
+          key: v3-pre-commit-hooks-{{ checksum ".pre-commit-config.yaml" }}
           paths:
             - "~/.cache/pre-commit"
   set_container_reg_env_vars:
@@ -41,7 +41,7 @@ jobs:
       - save_precommit_hooks
       - setup_precommit_hooks
       - shellcheck/install
-      - run: pre-commit run --all-files --verbose --config .pre-commit-config-ci.yaml
+      - run: pre-commit run --all-files --verbose --config .pre-commit-config.yaml
 
   test-components:
     executor:
