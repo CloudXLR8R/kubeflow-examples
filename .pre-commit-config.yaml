@@ -30,7 +30,7 @@ repos:
       - id: shellcheck
 
   - repo: https://github.com/syntaqx/git-hooks
-    rev: v0.0.16
+    rev: master
     hooks:
       - id: circleci-config-validate
       - id: forbid-binary
