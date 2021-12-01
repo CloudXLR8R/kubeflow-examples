@@ -1,0 +1,8 @@
+-c requirements.txt
+pytest
+black
+flake8
+ipython
+jupyter
+ipykernel
+

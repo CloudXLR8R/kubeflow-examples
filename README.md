@@ -1,5 +1,3 @@
-[![CircleCI](https://circleci.com/gh/CloudXLR8R/kubeflow-examples.svg?style=svg)](https://circleci.com/gh/CloudXLR8R/kubeflow-examples)
-
 # Kubeflow Examples
 Example kubeflow pipelines for use with Cloud XLR8R's [managed Kubeflow service](https://cloudxlr8r.com/kubeflow). See the [docs](https://docs.cloudxlr8r.com/) or [XLR8R's blog](https://cloudxlr8r.com/blog) for tutorials on how to use these.
 
